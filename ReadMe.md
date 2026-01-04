@@ -85,6 +85,7 @@ This tool repairs the split Live Photos by re-injecting the necessary metadata s
     - .mp4 files are remuxed into a MOV container
     - .heic is passed through unchanged. jpg's and jpeg's are re-encoded as .heic
     - All other metadata is untouched and passed through with the addition of the above injections.
+    - files will autorename in the case of duplicated basenames to avoid clashes and overwriting
 
 ### Matching Criteria
 
