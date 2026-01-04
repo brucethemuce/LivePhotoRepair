@@ -33,33 +33,34 @@ final class PairMatcher {
             videoDurations[video.url] = video.duration ?? 0
         }
 
-
-        // Group assets by parent folder
+        // Group assets by normalized parent folder
         let folders = Dictionary(
             grouping: images + videos,
-            by: { $0.url.deletingLastPathComponent() }
+            by: { $0.url.deletingLastPathComponent().standardizedFileURL }
         )
 
         for (_, assetsInFolder) in folders {
-
             let folderImages = assetsInFolder.filter { $0.type == .image }
             let folderVideos = assetsInFolder.filter { $0.type == .video }
             var usedVideos = Set<URL>()
 
             for image in folderImages {
-
                 guard let imageDate = image.creationDate else { continue }
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
+                let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
 
-                // -------------------------------------------------
-                // P1: exact basename match + timestamp
-                // -------------------------------------------------
                 var matched = false
 
+                // -----------------------
+                // P1: exact basename match
+                // -----------------------
                 for video in folderVideos where !usedVideos.contains(video.url) {
-
                     guard let videoDate = video.creationDate else { continue }
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
+                    let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
+
+                    // Enforce same directory
+                    guard imageFolder == videoFolder else { continue }
 
                     guard imageBase == videoBase else { continue }
                     guard abs(imageDate.timeIntervalSince(videoDate)) <= maxTimeDiff else { continue }
@@ -67,39 +68,31 @@ final class PairMatcher {
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
 
-                    pairs.append(
-                        AssetPair(image: image, video: video, priority: 1)
-                    )
+                    pairs.append(AssetPair(image: image, video: video, priority: 1))
                     usedVideos.insert(video.url)
                     matched = true
 
                     if dryRun {
-                        print(
-                            "DRY-RUN [P1]: \(imageBase) ↔ \(videoBase) " +
-                            "[\(String(format: "%.2f", duration))s]"
-                        )
+                        print("DRY-RUN [P1]: \(imageBase) ↔ \(videoBase) [\(String(format: "%.2f", duration))s]")
                     }
                     break
                 }
 
                 if matched { continue }
 
-                // -------------------------------------------------
+                // -----------------------
                 // P2: sequential numeric filename match
-                // -------------------------------------------------
-                guard let (imagePrefix, imageNum) = parseNumericSuffix(imageBase) else {
-                    continue
-                }
+                // -----------------------
+                guard let (imagePrefix, imageNum) = parseNumericSuffix(imageBase) else { continue }
 
                 for video in folderVideos where !usedVideos.contains(video.url) {
-
                     guard let videoDate = video.creationDate else { continue }
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
+                    let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
 
-                    guard let (videoPrefix, videoNum) = parseNumericSuffix(videoBase) else {
-                        continue
-                    }
-
+                    // Enforce same directory
+                    guard imageFolder == videoFolder else { continue }
+                    guard let (videoPrefix, videoNum) = parseNumericSuffix(videoBase) else { continue }
                     guard imagePrefix == videoPrefix else { continue }
 
                     let delta = abs(imageNum - videoNum)
@@ -109,16 +102,11 @@ final class PairMatcher {
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
 
-                    pairs.append(
-                        AssetPair(image: image, video: video, priority: 2)
-                    )
+                    pairs.append(AssetPair(image: image, video: video, priority: 2))
                     usedVideos.insert(video.url)
 
                     if dryRun {
-                        print(
-                            "DRY-RUN [P2]: \(imageBase) ↔ \(videoBase) " +
-                            "[Δnum: \(delta), \(String(format: "%.2f", duration))s]"
-                        )
+                        print("DRY-RUN [P2]: \(imageBase) ↔ \(videoBase) [Δnum: \(delta), \(String(format: "%.2f", duration))s]")
                     }
                     break
                 }
