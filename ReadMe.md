@@ -17,9 +17,8 @@ It is designed to work with files exported from the Photos app or other sources 
 
 ## Requirements
 
-- Written in Swift
-- Built using Swift Package Manager
-- Targeted for **macOS Monterey (12.x)**, but may work on other macOS versions (not tested)
+- Targeted for **macOS Monterey (12.x)**, but may work on other more recent macOS versions (not tested)
+- Developed using quickemu on Ubuntu hostsystem
 
 ## Installation
 
