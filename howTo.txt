@@ -1,0 +1,4 @@
+swiftc -framework AVFoundation -framework ImageIO -framework CoreServices *.swift -o livephoto-repair
+
+livephoto-repair --dry-run /input /output
+livephoto-repair /input /output
