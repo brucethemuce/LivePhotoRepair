@@ -26,18 +26,14 @@ final class AssetScanner {
         )!
 
         for case let url as URL in enumerator {
-            guard let resourceValues = try? url.resourceValues(forKeys: Set(keys)) else {
-                continue
-            }
+            guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
+            if values.isDirectory == true { continue }
 
-            if resourceValues.isDirectory == true { continue }
+            let typeIdentifier = values.typeIdentifier ?? ""
+            let creationDate = values.creationDate
+            let ext = url.pathExtension.lowercased()
 
-            let typeIdentifier = resourceValues.typeIdentifier ?? ""
-            let creationDate = resourceValues.creationDate
-
-            if typeIdentifier.hasPrefix("public.image")
-                || url.pathExtension.lowercased() == "heic" {
-
+            if typeIdentifier.hasPrefix("public.image") || ["heic", "jpg", "jpeg"].contains(ext) {
                 assets.append(
                     AssetFile(
                         url: url,
@@ -46,10 +42,10 @@ final class AssetScanner {
                         duration: nil
                     )
                 )
+                continue
+            }
 
-            } else if typeIdentifier.hasPrefix("public.movie")
-                || ["mov","mp4"].contains(url.pathExtension.lowercased()) {
-
+            if typeIdentifier.hasPrefix("public.movie") || ["mov", "mp4"].contains(ext) {
                 let asset = AVURLAsset(
                     url: url,
                     options: [

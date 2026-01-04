@@ -83,7 +83,7 @@ This tool repairs the split Live Photos by re-injecting the necessary metadata s
    - This links the video to the image, signaling Photos app to treat them as a single Live Photo.
 4. **Write the updated files to the output directory**
     - .mp4 files are remuxed into a MOV container
-    - .heic and .jpeg preserve the original file extension
+    - .heic is passed through unchanged. jpg's and jpeg's are re-encoded as .heic
     - All other metadata is untouched and passed through with the addition of the above injections.
 
 ### Matching Criteria
