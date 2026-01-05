@@ -17,8 +17,10 @@ It is designed to work with files exported from the Photos app or other sources 
 
 ## Requirements
 
-- Targeted for **macOS Monterey (12.x)**, but may work on other more recent macOS versions (not tested)
+- Targeted for **macOS Sonoma**, but may work on other more recent macOS versions (not tested)
 - Developed using quickemu on Ubuntu hostsystem
+- requires brew and libheif
+``` brew install libheif```
 
 ## Installation
 
@@ -28,10 +30,11 @@ Clone the repository:
 git clone https://github.com/yourusername/LivePhotoRepair.git
 cd LivePhotoRepair
 ```
-Build the release binary:
+Build the binary:
 ```
 swiftc -framework AVFoundation -framework ImageIO -framework CoreServices *.swift -o livephoto-repair
 ```
+You might get deprecation errors on building but its fine.
 
 ## Usage
 ### Dry-Run Mode (Safe Preview)
@@ -84,7 +87,7 @@ This tool repairs the split Live Photos by re-injecting the necessary metadata s
     - .mp4 files are remuxed into a MOV container
     - .heic is passed through unchanged. jpg's and jpeg's are re-encoded as .heic
     - All other metadata is untouched and passed through with the addition of the above injections.
-    - files will autorename in the case of duplicated basenames to avoid clashes and overwriting
+    - files will autorename in the output folder the case of duplicated basenames to avoid clashes and overwriting
 
 ### Matching Criteria
 
