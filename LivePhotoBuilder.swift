@@ -14,7 +14,8 @@ final class LivePhotoBuilder {
         let uniqueVideoOut = uniqueFileURL(original: videoOut)
 
         // Write files
-        try writeImage(src: pair.image.url, dst: uniqueImageOut, assetID: assetID)
+        let imageWriter = ImageWriter()
+        try imageWriter.write(src: pair.image.url, dst: uniqueImageOut, assetID: assetID)
         try writeVideo(src: pair.video.url, dst: uniqueVideoOut, assetID: assetID)
     }
 
