@@ -1,15 +1,7 @@
-//
-//  PairMatcher.swift
-//  LivePhotoRepair
-//
-
 import Foundation
 import AVFoundation
 
 final class PairMatcher {
-
-    /// Timestamp tolerance for matching (seconds)
-    var maxTimeDiff: TimeInterval = 2.5
 
     /// Maximum allowed numeric difference for sequential filenames
     /// 1 is ideal (IMG_0019 ↔ IMG_0020)
@@ -45,7 +37,6 @@ final class PairMatcher {
             var usedVideos = Set<URL>()
 
             for image in folderImages {
-                guard let imageDate = image.creationDate else { continue }
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
 
@@ -55,15 +46,12 @@ final class PairMatcher {
                 // P1: exact basename match
                 // -----------------------
                 for video in folderVideos where !usedVideos.contains(video.url) {
-                    guard let videoDate = video.creationDate else { continue }
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
-
                     guard imageBase == videoBase else { continue }
-                    guard abs(imageDate.timeIntervalSince(videoDate)) <= maxTimeDiff else { continue }
 
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
@@ -86,7 +74,6 @@ final class PairMatcher {
                 guard let (imagePrefix, imageNum) = parseNumericSuffix(imageBase) else { continue }
 
                 for video in folderVideos where !usedVideos.contains(video.url) {
-                    guard let videoDate = video.creationDate else { continue }
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
 
@@ -97,7 +84,6 @@ final class PairMatcher {
 
                     let delta = abs(imageNum - videoNum)
                     guard delta > 0 && delta <= maxNumericDelta else { continue }
-                    guard abs(imageDate.timeIntervalSince(videoDate)) <= maxTimeDiff else { continue }
 
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
