@@ -39,7 +39,7 @@ final class ImageWriter {
         let heifEncPath = "/usr/local/bin/heif-enc" // adjust if installed elsewhere
         let process = Process()
         process.executableURL = URL(fileURLWithPath: heifEncPath)
-        process.arguments = [input.path, "-o", output.path]
+        process.arguments = [input.path, "-o", output.path, "-q", "90"]
 
         let pipe = Pipe()
         process.standardOutput = pipe
