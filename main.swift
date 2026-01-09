@@ -62,18 +62,24 @@ print("Matched \(pairs.count) potential Live Photo pairs")
 // ---------------------
 let builder = LivePhotoBuilder()
 
-for pair in pairs {
+let total = pairs.count
+
+for (index, pair) in pairs.enumerated() {
+    let current = index + 1
+    let imageName = pair.image.url.lastPathComponent
+
     if dryRun {
-        print("DRY-RUN: would build Live Photo for \(pair.image.url.lastPathComponent)")
+        print("[\(current)/\(total)] DRY-RUN: would build Live Photo for \(imageName)")
     } else {
         do {
             try builder.build(pair: pair, outputDir: outputURL)
-            print("✔ Built Live Photo: \(pair.image.baseName)")
+            print("[\(current)/\(total)] Built Live Photo: \(imageName)")
         } catch {
-            print("✖ Failed to build \(pair.image.baseName): \(error)")
+            print("[\(current)/\(total)] Failed to build \(imageName): \(error)")
         }
     }
 }
+
 
 if dryRun {
     print("Dry run complete — no files were written.")
