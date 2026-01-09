@@ -26,7 +26,7 @@ func writeVideo(src: URL, dst: URL, assetID: String) throws {
     let stillMeta = AVMutableMetadataItem()
     stillMeta.keySpace = .quickTimeMetadata
     stillMeta.key = "com.apple.quicktime.still-image-time" as NSString
-    stillMeta.value = 0 as NSNumber
+    stillMeta.value = 0 as NSNumber // the time is unrecoverable but must be set to something to re-pair, you could do some frame matching with a hash but thats alot of work for little gain
 
     exporter.outputURL = dst
     exporter.outputFileType = .mov

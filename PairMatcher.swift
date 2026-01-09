@@ -4,7 +4,7 @@ import AVFoundation
 final class PairMatcher {
 
     /// Maximum video duration (seconds)
-    var maxVideoDuration: TimeInterval = 4.0
+    var maxVideoDuration: TimeInterval = 4.0 // its usually less than 3 but can be a bit more sometimes found a few cases that are 3.1s
 
     /// Matches images and videos into Live Photo pairs
     func match(

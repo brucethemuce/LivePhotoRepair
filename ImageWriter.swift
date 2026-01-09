@@ -34,12 +34,12 @@ final class ImageWriter {
     }
 
 
-    /// Uses libheif heif-enc CLI to convert an image to Apple HEVC HEIC
+    /// Uses libheif heif-enc CLI to convert jpeg to Apple HEVC HEIC
     private func convertToAppleHEIC(input: URL, output: URL) throws {
         let heifEncPath = "/usr/local/bin/heif-enc" // adjust if installed elsewhere
         let process = Process()
         process.executableURL = URL(fileURLWithPath: heifEncPath)
-        process.arguments = [input.path, "-o", output.path, "-q", "90"]
+        process.arguments = [input.path, "-o", output.path, "-q", "90"] // quality 90 is a good balance, 100 is too big. icloud will compress anyway
 
         let pipe = Pipe()
         process.standardOutput = pipe
