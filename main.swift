@@ -8,23 +8,21 @@ import Foundation
 // ---------------------
 // Command-line argument parsing
 // ---------------------
-let args = CommandLine.arguments
+let args = Array(CommandLine.arguments.dropFirst())
 
-// Dry-run flag
 let dryRun = args.contains("--dry-run") || args.contains("-n")
 
-// Filter out flags for positional paths
 let paths = args.filter { !$0.hasPrefix("-") }
 
-guard paths.count == 3 else {
+guard paths.count == 2 else {
     print("""
     Usage: livephoto-repair [--dry-run|-n] <input-folder> <output-folder>
     """)
     exit(1)
 }
 
-let inputURL = URL(fileURLWithPath: paths[1])
-let outputURL = URL(fileURLWithPath: paths[2])
+let inputURL = URL(fileURLWithPath: paths[0])
+let outputURL = URL(fileURLWithPath: paths[1])
 
 // ---------------------
 // Ensure output folder exists
