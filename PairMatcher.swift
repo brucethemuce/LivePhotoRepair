@@ -3,8 +3,12 @@ import AVFoundation
 
 final class PairMatcher {
 
+    /// Maximum allowed numeric difference for sequential filenames
+    /// 1 is ideal (IMG_0019 ↔ IMG_0020)
+    var maxNumericDelta: Int = 1
+
     /// Maximum video duration (seconds)
-    var maxVideoDuration: TimeInterval = 4.0 // its usually less than 3 but can be a bit more sometimes found a few cases that are 3.1s
+    var maxVideoDuration: TimeInterval = 4.0
 
     /// Matches images and videos into Live Photo pairs
     func match(
@@ -33,45 +37,83 @@ final class PairMatcher {
             var usedVideos = Set<URL>()
 
             for image in folderImages {
-                let imageName = image.url.lastPathComponent
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
 
+                var matched = false
+
+                // -----------------------
+                // P1: exact basename match
+                // -----------------------
                 for video in folderVideos where !usedVideos.contains(video.url) {
-                    let videoName = video.url.lastPathComponent
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
-                    // Exact filename match
                     guard imageBase == videoBase else { continue }
 
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
 
-                    pairs.append(
-                        AssetPair(
-                            image: image,
-                            video: video,
-                            priority: 1
-                        )
-                    )
+                    pairs.append(AssetPair(image: image, video: video, priority: 1))
+                    usedVideos.insert(video.url)
+                    matched = true
 
+                    if dryRun {
+                        print("DRY-RUN [P1]: \(imageBase) ↔ \(videoBase) [\(String(format: "%.2f", duration))s]")
+                    }
+                    break
+                }
+
+                if matched { continue }
+
+                // -----------------------
+                // P2: sequential numeric filename match
+                // -----------------------
+                guard let (imagePrefix, imageNum) = parseNumericSuffix(imageBase) else { continue }
+
+                for video in folderVideos where !usedVideos.contains(video.url) {
+                    let videoBase = video.url.deletingPathExtension().lastPathComponent
+                    let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
+
+                    // Enforce same directory
+                    guard imageFolder == videoFolder else { continue }
+                    guard let (videoPrefix, videoNum) = parseNumericSuffix(videoBase) else { continue }
+                    guard imagePrefix == videoPrefix else { continue }
+
+                    let delta = abs(imageNum - videoNum)
+                    guard delta > 0 && delta <= maxNumericDelta else { continue }
+
+                    let duration = videoDurations[video.url] ?? 0
+                    guard duration <= maxVideoDuration else { continue }
+
+                    pairs.append(AssetPair(image: image, video: video, priority: 2))
                     usedVideos.insert(video.url)
 
                     if dryRun {
-                        print(
-                            "DRY-RUN [MATCH]: \(imageName) ↔ \(videoName) " +
-                            "[\(String(format: "%.2f", duration))s]"
-                        )
+                        print("DRY-RUN [P2]: \(imageBase) ↔ \(videoBase) [Δnum: \(delta), \(String(format: "%.2f", duration))s]")
                     }
-
                     break
                 }
             }
         }
 
         return pairs
+    }
+
+    // MARK: - Helpers
+
+    /// Parses a filename into a (prefix, number) pair
+    /// Example: IMG_0019 -> ("IMG_", 19)
+    private func parseNumericSuffix(_ name: String) -> (prefix: String, number: Int)? {
+        let digits = name.reversed().prefix { $0.isNumber }
+        guard !digits.isEmpty else { return nil }
+
+        let numberStr = String(digits.reversed())
+        guard let number = Int(numberStr) else { return nil }
+
+        let prefix = String(name.dropLast(numberStr.count))
+        return (prefix, number)
     }
 }
