@@ -51,6 +51,7 @@ final class PairMatcher {
             for image in folderImages {
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
+                let imageFullName = image.url.lastPathComponent
                 var matched = false
 
                 // -----------------------
@@ -59,7 +60,7 @@ final class PairMatcher {
                 for video in folderVideos where !usedVideos.contains(video.url) {
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
-
+                    let videoFullName = video.url.lastPathComponent
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
@@ -73,7 +74,7 @@ final class PairMatcher {
                     matched = true
 
                     if dryRun {
-                        print("DRY-RUN [P1]: \(imageBase) ↔ \(videoBase) [\(String(format: "%.2f", duration))s]")
+                        print("DRY-RUN [P1]: \(imageFullName) ↔ \(videoFullName)")
                     }
                     break
                 }
@@ -89,7 +90,6 @@ final class PairMatcher {
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
                     let videoFullName = video.url.lastPathComponent
-                    let imageFullName = image.url.lastPathComponent
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
@@ -106,14 +106,14 @@ final class PairMatcher {
                     usedVideos.insert(video.url)
 
                     // Write P2 match to file
-                    let matchLine = "\(imageFullName) matched \(videoFullName) \n"
+                    let matchLine = "\(imageFullName) \(videoFullName)\n"
                     if let data = matchLine.data(using: .utf8) {
                         p2FileHandle.seekToEndOfFile()
                         p2FileHandle.write(data)
                     }
 
                     if dryRun {
-                        print("DRY-RUN [P2]: \(matchLine.trimmingCharacters(in: .whitespacesAndNewlines))")
+                        print("DRY-RUN [P2]: \(imageFullName) ↔ \(videoFullName)")
                     }
                     break
                 }
