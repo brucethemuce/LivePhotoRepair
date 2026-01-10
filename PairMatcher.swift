@@ -25,6 +25,18 @@ final class PairMatcher {
             videoDurations[video.url] = video.duration ?? 0
         }
 
+        // Prepare file URL for P2 matches
+        let p2FileURL = URL(fileURLWithPath: "P2matches.txt")
+        // Clear previous contents
+        try? "".write(to: p2FileURL, atomically: true, encoding: .utf8)
+
+        // Open file handle once
+        guard let p2FileHandle = try? FileHandle(forWritingTo: p2FileURL) else {
+            print("Failed to open P2matches.txt for writing.")
+            return pairs
+        }
+        defer { p2FileHandle.closeFile() }
+
         // Group assets by normalized parent folder
         let folders = Dictionary(
             grouping: images + videos,
@@ -39,7 +51,6 @@ final class PairMatcher {
             for image in folderImages {
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
-
                 var matched = false
 
                 // -----------------------
@@ -48,6 +59,7 @@ final class PairMatcher {
                 for video in folderVideos where !usedVideos.contains(video.url) {
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
+
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
@@ -76,6 +88,8 @@ final class PairMatcher {
                 for video in folderVideos where !usedVideos.contains(video.url) {
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
+                    let videoFullName = video.url.lastPathComponent
+                    let imageFullName = image.url.lastPathComponent
 
                     // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
@@ -91,8 +105,15 @@ final class PairMatcher {
                     pairs.append(AssetPair(image: image, video: video, priority: 2))
                     usedVideos.insert(video.url)
 
+                    // Write P2 match to file
+                    let matchLine = "\(imageFullName) matched \(videoFullName) \n"
+                    if let data = matchLine.data(using: .utf8) {
+                        p2FileHandle.seekToEndOfFile()
+                        p2FileHandle.write(data)
+                    }
+
                     if dryRun {
-                        print("DRY-RUN [P2]: \(imageBase) ↔ \(videoBase) [Δnum: \(delta), \(String(format: "%.2f", duration))s]")
+                        print("DRY-RUN [P2]: \(matchLine.trimmingCharacters(in: .whitespacesAndNewlines))")
                     }
                     break
                 }
@@ -101,6 +122,7 @@ final class PairMatcher {
 
         return pairs
     }
+
 
     // MARK: - Helpers
 

@@ -69,7 +69,6 @@ for (index, pair) in pairs.enumerated() {
     let imageName = pair.image.url.lastPathComponent
 
     if dryRun {
-        print("[\(current)/\(total)] DRY-RUN: would build Live Photo for \(imageName)")
     } else {
         do {
             try builder.build(pair: pair, outputDir: outputURL)
