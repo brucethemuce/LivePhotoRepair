@@ -54,21 +54,23 @@ final class PairMatcher {
             let folderVideos = assetsInFolder.filter { $0.type == .video }
             var usedVideos = Set<URL>()
 
+            // =====================================================
+            // PASS 1: P1 + P2
+            // =====================================================
             for image in folderImages {
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
                 let imageFullName = image.url.lastPathComponent
-                var matched = false
 
                 // -----------------------
                 // P1: exact basename match
                 // -----------------------
+                var matched = false
                 for video in folderVideos where !usedVideos.contains(video.url) {
                     let videoBase = video.url.deletingPathExtension().lastPathComponent
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
                     let videoFullName = video.url.lastPathComponent
 
-                    // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
                     guard imageBase == videoBase else { continue }
 
@@ -97,7 +99,6 @@ final class PairMatcher {
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
                     let videoFullName = video.url.lastPathComponent
 
-                    // Enforce same directory
                     guard imageFolder == videoFolder else { continue }
                     guard let (videoPrefix, videoNum) = parseNumericSuffix(videoBase) else { continue }
                     guard imagePrefix == videoPrefix else { continue }
@@ -111,7 +112,6 @@ final class PairMatcher {
                     pairs.append(AssetPair(image: image, video: video, priority: 2))
                     usedVideos.insert(video.url)
 
-                    // Write P2 match to file
                     let matchLine = "\(imageFullName) \(videoFullName)\n"
                     if let data = matchLine.data(using: .utf8) {
                         p2FileHandle.seekToEndOfFile()
@@ -121,14 +121,17 @@ final class PairMatcher {
                     if dryRun {
                         print("DRY-RUN [P2]: \(imageFullName) ↔ \(videoFullName)")
                     }
-                    matched = true
                     break
                 }
-                if matched { continue }
+            }
 
-                // -----------------------
-                // P3: match by metadata creation date ±4 seconds
-                // -----------------------
+            // =====================================================
+            // PASS 2: P3 (date-based, after P1+P2 exhausted)
+            // =====================================================
+            for image in folderImages {
+                let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
+                let imageFullName = image.url.lastPathComponent
+
                 for video in folderVideos where !usedVideos.contains(video.url) {
                     let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
                     let videoFullName = video.url.lastPathComponent
@@ -138,13 +141,8 @@ final class PairMatcher {
                     let duration = videoDurations[video.url] ?? 0
                     guard duration <= maxVideoDuration else { continue }
 
-                    //debug line to verify date extraction
-                    // print("Image: \(image.exifCreateDate) | Video: \(video.quickTimeCreationDate)")
-
                     if let imageDate = image.exifCreateDate,
-                       let videoDate = video.quickTimeCreationDate {
-
-                        
+                    let videoDate = video.quickTimeCreationDate {
 
                         let deltaSeconds = abs(imageDate.timeIntervalSince(videoDate))
                         guard deltaSeconds <= 4 else { continue }
@@ -152,7 +150,6 @@ final class PairMatcher {
                         pairs.append(AssetPair(image: image, video: video, priority: 3))
                         usedVideos.insert(video.url)
 
-                        // Write P3 match
                         let matchLine = "\(imageFullName) \(videoFullName)\n"
                         if let data = matchLine.data(using: .utf8) {
                             p3FileHandle.seekToEndOfFile()
@@ -162,7 +159,6 @@ final class PairMatcher {
                         if dryRun {
                             print("DRY-RUN [P3]: \(imageFullName) ↔ \(videoFullName)")
                         }
-                        matched = true
                         break
                     }
                 }
