@@ -3,6 +3,9 @@ import AVFoundation
 
 final class AssetScanner {
 
+    /// Max number of files per ExifTool invocation
+    private static let exifToolBatchSize = 500 //slightly faster than 250
+
     /// Scan a folder recursively and return all image/video assets
     func scan(folder: URL) -> [AssetFile] {
         var assets: [AssetFile] = []
@@ -33,7 +36,7 @@ final class AssetScanner {
             }
         }
 
-        // ---- Batch metadata extraction ----
+        // ---- Batch metadata extraction (FAST) ----
 
         let imageDates = Self.runExifToolBatch(
             urls: imageURLs,
@@ -61,7 +64,7 @@ final class AssetScanner {
 
         for url in videoURLs {
             let asset = AVURLAsset(url: url)
-            let duration = asset.duration.isNumeric ? asset.duration.seconds : nil
+            let duration = asset.duration.isNumeric ? asset.duration.seconds : nil //slow but need to check all the videos
 
             assets.append(
                 AssetFile(
@@ -77,67 +80,7 @@ final class AssetScanner {
         return assets
     }
 
-
-    // MARK: - ExifTool stuff
-
-    private static func runExifTool(url: URL, printFormat: String) -> Date? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [
-            "exiftool",
-            "-m",
-            "-p",
-            printFormat,
-            url.path
-        ]
-
-        let stdout = Pipe()
-        let stderr = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr // equivalent to 2>/dev/null
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            print("ExifTool failed: \(error)")
-            return nil
-        }
-
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !output.isEmpty
-        else {
-            return nil
-        }
-
-        return parseExifToolDate(output)
-    }
-
-    // MARK: - Date normalization
-
-    private static func parseExifToolDate(_ string: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.timeZone = TimeZone.current
-
-        let formats = [
-            "yyyy:MM:dd HH:mm:ss.SSSZ",
-            "yyyy:MM:dd HH:mm:ssZ",
-            "yyyy:MM:dd HH:mm:ss.SSS",
-            "yyyy:MM:dd HH:mm:ss"
-        ]
-
-        for format in formats {
-            formatter.dateFormat = format
-            if let date = formatter.date(from: string) {
-                return date
-            }
-        }
-
-        print("Failed to parse ExifTool date: \(string)")
-        return nil
-    }
+    // MARK: - ExifTool batching, much faster than per file or doing all at once.
 
     private static func runExifToolBatch(
         urls: [URL],
@@ -146,47 +89,83 @@ final class AssetScanner {
 
         guard !urls.isEmpty else { return [:] }
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [
-            "exiftool",
-            "-m",
-            "-p",
-            printFormat
-        ] + urls.map { $0.path }
-
-        let stdout = Pipe()
-        process.standardOutput = stdout
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            print("ExifTool batch failed: \(error)")
-            return [:]
-        }
-
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8) else {
-            return [:]
-        }
-
         var results: [String: Date] = [:]
 
-        for line in output.split(separator: "\n") {
-            let parts = line.split(separator: "|", maxSplits: 1)
-            guard parts.count == 2 else { continue }
+        for chunk in urls.chunked(into: exifToolBatchSize) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = [
+                "exiftool",
+                "-m",
+                "-p",
+                printFormat
+            ] + chunk.map { $0.path }
 
-            let filename = String(parts[0])
-            let dateString = String(parts[1])
+            let stdout = Pipe()
+            process.standardOutput = stdout
+            process.standardError = Pipe()
 
-            if let date = parseExifToolDate(dateString) {
-                results[filename] = date
+            do {
+                try process.run()
+                process.waitUntilExit()
+            } catch {
+                print("ExifTool batch failed: \(error)")
+                continue
+            }
+
+            let data = stdout.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else { continue }
+
+            for line in output.split(separator: "\n") {
+                let parts = line.split(separator: "|", maxSplits: 1)
+                guard parts.count == 2 else { continue }
+
+                let filename = String(parts[0])
+                let dateString = String(parts[1])
+
+                if let date = parseExifToolDate(dateString) {
+                    results[filename] = date
+                }
             }
         }
 
         return results
     }
+
+    // MARK: - Date normalization (formatter reuse)
+
+    private static let exifDateFormatters: [DateFormatter] = {
+        let formats = [
+            "yyyy:MM:dd HH:mm:ss.SSSZ",
+            "yyyy:MM:dd HH:mm:ssZ",
+            "yyyy:MM:dd HH:mm:ss.SSS",
+            "yyyy:MM:dd HH:mm:ss"
+        ]
+
+        return formats.map {
+            let formatter = DateFormatter()
+            formatter.dateFormat = $0
+            formatter.timeZone = TimeZone.current
+            return formatter
+        }
+    }()
+
+    private static func parseExifToolDate(_ string: String) -> Date? {
+        for formatter in exifDateFormatters {
+            if let date = formatter.date(from: string) {
+                return date
+            }
+        }
+        return nil
+    }
 }
 
+// MARK: - Array chunking helper
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
+}
