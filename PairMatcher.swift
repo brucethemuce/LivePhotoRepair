@@ -27,7 +27,6 @@ final class PairMatcher {
 
         // Prepare file URL for P2 matches
         let p2FileURL = URL(fileURLWithPath: "P2matches.txt")
-        // Clear previous contents
         try? "".write(to: p2FileURL, atomically: true, encoding: .utf8)
 
         // Open file handle once
@@ -37,7 +36,14 @@ final class PairMatcher {
         }
         defer { p2FileHandle.closeFile() }
 
-        // Group assets by normalized parent folder
+        let p3FileURL = URL(fileURLWithPath: "P3matches.txt")
+        try? "".write(to: p3FileURL, atomically: true, encoding: .utf8)
+        guard let p3FileHandle = try? FileHandle(forWritingTo: p3FileURL) else { 
+            print("Failed to open P3matches.txt for writing.")
+            return pairs }
+        defer { p3FileHandle.closeFile() }
+
+        // Group assets by folder
         let folders = Dictionary(
             grouping: images + videos,
             by: { $0.url.deletingLastPathComponent().standardizedFileURL }
@@ -115,7 +121,50 @@ final class PairMatcher {
                     if dryRun {
                         print("DRY-RUN [P2]: \(imageFullName) ↔ \(videoFullName)")
                     }
+                    matched = true
                     break
+                }
+                if matched { continue }
+
+                // -----------------------
+                // P3: match by metadata creation date ±4 seconds
+                // -----------------------
+                for video in folderVideos where !usedVideos.contains(video.url) {
+                    let videoFolder = video.url.deletingLastPathComponent().standardizedFileURL
+                    let videoFullName = video.url.lastPathComponent
+
+                    guard imageFolder == videoFolder else { continue }
+
+                    let duration = videoDurations[video.url] ?? 0
+                    guard duration <= maxVideoDuration else { continue }
+
+                    //debug line to verify date extraction
+                    // print("Image: \(image.exifCreateDate) | Video: \(video.quickTimeCreationDate)")
+
+                    if let imageDate = image.exifCreateDate,
+                       let videoDate = video.quickTimeCreationDate {
+
+                        
+
+                        let deltaSeconds = abs(imageDate.timeIntervalSince(videoDate))
+                        guard deltaSeconds <= 4 else { continue }
+
+                        pairs.append(AssetPair(image: image, video: video, priority: 3))
+                        usedVideos.insert(video.url)
+
+                        // Write P3 match
+                        let matchLine = "\(imageFullName) \(videoFullName)\n"
+                        if let data = matchLine.data(using: .utf8) {
+                            p3FileHandle.seekToEndOfFile()
+                            p3FileHandle.write(data)
+                        }
+
+                        if dryRun {
+                            print("DRY-RUN [P3]: \(imageFullName) ↔ \(videoFullName)")
+                        }
+                        matched = true
+                        break
+                    }
                 }
             }
         }

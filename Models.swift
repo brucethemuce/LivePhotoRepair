@@ -9,8 +9,9 @@ import Foundation
 struct AssetFile {
     let url: URL
     let type: AssetType
-    let creationDate: Date?
     let duration: TimeInterval?
+    let exifCreateDate: Date?
+    let quickTimeCreationDate: Date?
     var baseName: String {
         return url.deletingPathExtension().lastPathComponent
     }
