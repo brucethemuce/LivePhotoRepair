@@ -8,7 +8,10 @@ final class PairMatcher {
     var maxNumericDelta: Int = 1
 
     /// Maximum video duration (seconds)
-    var maxVideoDuration: TimeInterval = 4.0
+    var maxVideoDuration = 4.0 // limit is 3s, but in practice sometimes (~5%) its a bit more, 3.1s or 3.2s
+    
+    /// Maximum date interval between video and photo assets (seconds)
+    var TimeInterval = 4 // idea being that the still might be first during or last, so match the video duration
 
     /// Matches images and videos into Live Photo pairs
     func match(
@@ -53,11 +56,12 @@ final class PairMatcher {
             let folderImages = assetsInFolder.filter { $0.type == .image }
             let folderVideos = assetsInFolder.filter { $0.type == .video }
             var usedVideos = Set<URL>()
+            var usedImages = Set<URL>()
 
             // =====================================================
             // PASS 1: P1 + P2
             // =====================================================
-            for image in folderImages {
+            for image in folderImages where !usedImages.contains(image.url) {
                 let imageBase = image.url.deletingPathExtension().lastPathComponent
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
                 let imageFullName = image.url.lastPathComponent
@@ -79,6 +83,7 @@ final class PairMatcher {
 
                     pairs.append(AssetPair(image: image, video: video, priority: 1))
                     usedVideos.insert(video.url)
+                    usedImages.insert(image.url)
                     matched = true
 
                     if dryRun {
@@ -111,6 +116,7 @@ final class PairMatcher {
 
                     pairs.append(AssetPair(image: image, video: video, priority: 2))
                     usedVideos.insert(video.url)
+                    usedImages.insert(image.url)
 
                     let matchLine = "\(imageFullName) \(videoFullName)\n"
                     if let data = matchLine.data(using: .utf8) {
@@ -128,7 +134,7 @@ final class PairMatcher {
             // =====================================================
             // PASS 2: P3 (date-based, after P1+P2 exhausted)
             // =====================================================
-            for image in folderImages {
+            for image in folderImages where !usedImages.contains(image.url) {
                 let imageFolder = image.url.deletingLastPathComponent().standardizedFileURL
                 let imageFullName = image.url.lastPathComponent
 
@@ -149,6 +155,7 @@ final class PairMatcher {
 
                         pairs.append(AssetPair(image: image, video: video, priority: 3))
                         usedVideos.insert(video.url)
+                        usedImages.insert(image.url)
 
                         let matchLine = "\(imageFullName) \(videoFullName)\n"
                         if let data = matchLine.data(using: .utf8) {
