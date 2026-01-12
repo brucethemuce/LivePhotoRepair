@@ -67,6 +67,8 @@ This creates repaired Live Photo files in the output directory. The input folder
 
 You can now reimport them into the macOS Photos app and then synced via iCloud. Both items must be imported at the same time for the app to recognize the newly minted single Live Photo asset.
 
+Run time is about 30-120 mins per 1000 pairs, re-encoding jpg files is the bottleneck, with mostly heic files expect faster times.
+
 ## How It Works
 
 Live Photos in macOS and iOS are composed of **two linked assets**:
