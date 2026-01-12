@@ -141,7 +141,7 @@ final class PairMatcher {
                     let videoDate = video.quickTimeCreationDate {
 
                         let deltaSeconds = abs(imageDate.timeIntervalSince(videoDate))
-                        guard deltaSeconds <= 3604.0 else { continue } //allow one timezone difference, maybe bad idea in general but i found many jpegs can get the timezone wrong
+                        guard deltaSeconds <= TimeInterval else { continue }
 
                         pairs.append(AssetPair(image: image, video: video, priority: 2))
                         usedVideos.insert(video.url)
