@@ -3,6 +3,7 @@
 LivePhotoRepair is a Swift-based command-line tool for macOS that detects split Live Photo pairs, and recombines them into proper Live Photos for viewing. 
 It is designed to work with files exported from the Photos app or other sources where a still image and a short video belong together but are shown separately in the camera roll or iCloud.
 
+You can run this on Linux using quickemu, see requirements below.
 
 ## Features
 
@@ -22,14 +23,17 @@ It is designed to work with files exported from the Photos app or other sources 
 
 - A filesystem folder containing the original videos and images, this approach cannot work reliably by interfacing with the Photos app directly
 - Access to a mac or emulator. Runs in **macOS Sonoma**, and may work on other more recent macOS versions (not tested)
-- Developed using quickemu Monterey on Ubuntu hostsystem, hence the old mac versions
-- Requires brew, libheif, and exiftool
+    - this was developed using quickemu Monterey on Ubuntu hostsystem, hence the old mac versions
+    - if using the emulator, iCloud works out of the box for Monterey but not Sonoma
+    - The mac must have direct filesystem access to the input assets. Samba also works.
+- Requires brew, libheif, and exiftool on the Mac
 
    - ``` brew install libheif```
       - if you dont have jpg matches you dont need libheif (in which case this does run on macOS Monterey)
    - ``` brew install exiftool```
    - if its a fresh install of macOS via quickemu these will take 30-40 minutes to install all dependencies
 
+For my own usecase, I compiled and ran this on qemu Sonoma, then imported into iCloud via the Photos app on qemu Monterey.
 
 ## Installation
 Get the requirements above.
@@ -80,7 +84,7 @@ The Photos app determines that these two files belong together using **specific 
 Split Live Photos fail to appear as a single Live Photo because these references are missing or inconsistent. 
 This seems to often be caused by export/import from a third party app to iOS Photos app (e.g. dropbox, google drive, snapchat, sms, some photo editing, etc.)
 
-This tool repairs the split Live Photos by re-injecting the necessary metadata so that the Photos app can recognize the image and video as a single Live Photo for displaying.
+This tool repairs the split Live Photos by re-injecting the necessary metadata so that the Photos app (macOS, iOS, iCloud) can recognize the image and video as a single Live Photo for displaying.
 
 ### Metadata Operations Performed by the Tool
 
@@ -125,8 +129,14 @@ Each video and image is only used once through the matching process.
 
 ## Future Features (maybe)
 - video deduplication from iOS/macOS photos. the image dupes can be reliably removed using the builtin tool, but videos will not be recognized
+    - found a clunky iOS shortcuts that identifies videos based on the filename, this _could_ work to deduplicate the videos in the camera roll
 - more match candidates/verification by image/frame hashing (would be suuuuuper slow as its unknown what video frame the still is from, could make a similarity threshold but currently works very well via filenames and metadata)
-- you *could* do all this metadata injection on windows or linux but then you need to reimport them into the Photos app on macOS anyway... iCloud for windows *might* work for reimport but hasnt been tested. iCloud via web browser is hilariously limited and only supports jpeg uploads.
+- you *could* do all this metadata injection on windows or linux (directly) but then you need to reimport them into the Photos app on macOS anyway... iCloud for windows *might* work for reimport but hasnt been tested. iCloud via web browser is hilariously limited and only supports jpeg uploads.
+
+## Limitations
+- does not compare any other exif data, photos/videos from multiple devices may give false positives
+- if many photos are taken within a short window (rolling 4seconds) then the tool may mis-pair the assets. There is currently no checking for the _closest_ timestamp match, just that it matches within a tolerance of 4 seconds.
+    - as a workaround, rename the mis-pairs to have identical basenames (P1 match) and this wont be an issue
 
 ## Disclaimer
 
